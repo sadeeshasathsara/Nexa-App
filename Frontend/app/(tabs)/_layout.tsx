@@ -7,7 +7,7 @@ export default function TabsLayout() {
 
   useEffect(() => {
     // Redirect to student_tabs when this layout loads
-    router.replace("/(tabs)/(student_tabs)");
+    router.replace("/(tabs)/(tutor_tabs)");
   }, []);
 
   return (
