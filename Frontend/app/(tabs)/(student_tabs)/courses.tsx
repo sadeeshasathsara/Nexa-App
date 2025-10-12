@@ -4,7 +4,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  FlatList,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -159,19 +158,23 @@ export default function CoursesScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Visible Chatbot Button */}
+        <TouchableOpacity
+          style={styles.chatbotVisibleButton}
+          onPress={() => router.push("/(chatbot)")}
+        >
+          <Ionicons name="chatbubbles-outline" size={22} color="#fff" />
+          <Text style={styles.chatbotVisibleText}>Chat with AI Tutor</Text>
+        </TouchableOpacity>
       </ScrollView>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-    padding: 20,
-  },
+  container: { flex: 1 },
+  scrollView: { flex: 1, padding: 20 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -179,11 +182,7 @@ const styles = StyleSheet.create({
     marginBottom: 25,
     marginTop: 50,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#333",
-  },
+  title: { fontSize: 28, fontWeight: "bold", color: "#333" },
   searchButton: {
     width: 44,
     height: 44,
@@ -197,9 +196,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
-  categoriesContainer: {
-    marginBottom: 25,
-  },
+  categoriesContainer: { marginBottom: 25 },
   categoryButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
@@ -212,16 +209,9 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
-  categoryButtonActive: {
-    backgroundColor: "#667eea",
-  },
-  categoryText: {
-    color: "#666",
-    fontWeight: "500",
-  },
-  categoryTextActive: {
-    color: "#fff",
-  },
+  categoryButtonActive: { backgroundColor: "#667eea" },
+  categoryText: { color: "#666", fontWeight: "500" },
+  categoryTextActive: { color: "#fff" },
   coursesGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -245,12 +235,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  courseEmoji: {
-    fontSize: 40,
-  },
-  courseContent: {
-    padding: 12,
-  },
+  courseEmoji: { fontSize: 40 },
+  courseContent: { padding: 12 },
   courseCategory: {
     fontSize: 10,
     color: "#667eea",
@@ -264,25 +250,14 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 4,
   },
-  courseInstructor: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 8,
-  },
+  courseInstructor: { fontSize: 12, color: "#666", marginBottom: 8 },
   courseMeta: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 8,
   },
-  metaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  metaText: {
-    fontSize: 10,
-    color: "#666",
-    marginLeft: 2,
-  },
+  metaItem: { flexDirection: "row", alignItems: "center" },
+  metaText: { fontSize: 10, color: "#666", marginLeft: 2 },
   levelBadge: {
     alignSelf: "flex-start",
     backgroundColor: "rgba(102, 126, 234, 0.1)",
@@ -290,9 +265,41 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 10,
   },
-  levelText: {
-    fontSize: 10,
-    color: "#667eea",
+  levelText: { fontSize: 10, color: "#667eea", fontWeight: "600" },
+
+  // ✅ Visible Chatbot Button
+  chatbotVisibleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#667eea",
+    paddingVertical: 14,
+    borderRadius: 30,
+    marginTop: 30,
+    marginBottom: 150,
+  },
+  chatbotVisibleText: {
+    color: "#fff",
     fontWeight: "600",
+    fontSize: 16,
+    marginLeft: 8,
+  },
+
+  // Floating Chatbot Button (optional)
+  chatbotButton: {
+    position: "absolute",
+    bottom: 30,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#667eea",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
 });

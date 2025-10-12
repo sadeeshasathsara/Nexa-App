@@ -1,53 +1,71 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { View, Text } from "react-native";
 
-export default function TutorTabsLayout() {
+export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
+        tabBarActiveTintColor: "#007AFF",
+        tabBarInactiveTintColor: "#8E8E93",
         tabBarStyle: {
-          backgroundColor: "#1e3a8a",
-          borderTopColor: "#dbd5e4ff",
+          backgroundColor: "#FFFFFF",
+          borderTopWidth: 1,
+          borderTopColor: "#E5E5EA",
+          paddingBottom: 5,
+          paddingTop: 5,
+          height: 60,
         },
-        tabBarActiveTintColor: "#ffff",
-        tabBarInactiveTintColor: "#93c5fd",
+        headerStyle: {
+          backgroundColor: "#007AFF",
+        },
+        headerTintColor: "#FFFFFF",
+        headerTitleStyle: {
+          fontWeight: "bold",
+        },
       }}
     >
       <Tabs.Screen
-        name="dashboard"
+        name="index"
         options={{
-          title: "Dashboard",
+          title: "Home",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="grid" size={size} color={color} />
+            <Ionicons name="home-outline" size={size} color={color} />
           ),
+          headerTitle: "Tutor Dashboard",
         }}
       />
+
       <Tabs.Screen
         name="courses"
         options={{
           title: "Courses",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="book" size={size} color={color} />
+            <Ionicons name="book-outline" size={size} color={color} />
           ),
+          headerTitle: "My Courses",
         }}
       />
+
       <Tabs.Screen
-        name="quiz"
+        name="quizzes"
         options={{
           title: "Quizzes",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="document-text" size={size} color={color} />
+            <Ionicons name="help-circle-outline" size={size} color={color} />
           ),
+          headerTitle: "Manage Quizzes",
         }}
       />
+
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
+            <Ionicons name="person-outline" size={size} color={color} />
           ),
+          headerTitle: "My Profile",
         }}
       />
     </Tabs>

@@ -25,7 +25,7 @@ export default function OnboardingScreen1() {
 
         {/* Text Content */}
         <View style={styles.textContainer}>
-          <Text style={styles.title}>Welcome to LearnHub</Text>
+          <Text style={styles.title}>Welcome to Nexa</Text>
           <Text style={styles.subtitle}>
             Your gateway to personalized learning and expert tutoring. Start
             your educational journey with us today.

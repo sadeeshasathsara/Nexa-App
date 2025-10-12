@@ -27,31 +27,61 @@ export default function TutorProfile() {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Logout", 
-          style: "destructive",
-          onPress: () => router.replace("/(auth)/login")
-        },
-      ]
-    );
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: () => router.replace("/(auth)/login"),
+      },
+    ]);
   };
 
   const menuItems = [
-    { icon: "person", title: "Edit Profile", onPress: () => Alert.alert("Edit Profile", "Coming soon!") },
-    { icon: "school", title: "My Courses", onPress: () => router.push("/(tutor_tabs)/courses") },
-    { icon: "document-text", title: "Quiz History", onPress: () => Alert.alert("Quiz History", "Coming soon!") },
-    { icon: "analytics", title: "Performance Analytics", onPress: () => Alert.alert("Analytics", "Coming soon!") },
-    { icon: "settings", title: "Settings", onPress: () => Alert.alert("Settings", "Coming soon!") },
-    { icon: "help-circle", title: "Help & Support", onPress: () => Alert.alert("Help", "Coming soon!") },
+    {
+      icon: "person",
+      title: "Edit Profile",
+      onPress: () => Alert.alert("Edit Profile", "Coming soon!"),
+    },
+    {
+      icon: "school",
+      title: "My Courses",
+      onPress: () => router.push("/(tutor_tabs)/courses"),
+    },
+    {
+      icon: "document-text",
+      title: "Quiz History",
+      onPress: () => Alert.alert("Quiz History", "Coming soon!"),
+    },
+    {
+      icon: "analytics",
+      title: "Performance Analytics",
+      onPress: () => Alert.alert("Analytics", "Coming soon!"),
+    },
+    {
+      icon: "settings",
+      title: "Settings",
+      onPress: () => Alert.alert("Settings", "Coming soon!"),
+    },
+    {
+      icon: "help-circle",
+      title: "Help & Support",
+      onPress: () => Alert.alert("Help", "Coming soon!"),
+    },
   ];
 
   return (
-    <LinearGradient colors={["#1e3a8a", "#2f6dd1e5", "#3b86ffc6","#56c89eff" , "#3b86ffc6", "#3b82f6"]} style={styles.container}>
+    <LinearGradient
+      colors={[
+        "#1e3a8a",
+        "#2f6dd1e5",
+        "#3b86ffc6",
+        "#56c89eff",
+        "#3b86ffc6",
+        "#3b82f6",
+      ]}
+      style={styles.container}
+    >
       <ScrollView style={styles.scrollView}>
         {/* Header */}
         <View style={styles.header}>
@@ -68,13 +98,14 @@ export default function TutorProfile() {
               <Ionicons name="checkmark-circle" size={16} color="#ffffff" />
             </View>
           </View>
-          
+
           <Text style={styles.profileName}>Dr. Sarah Johnson</Text>
           <Text style={styles.profileTitle}>Mathematics Tutor</Text>
           <Text style={styles.profileBio}>
-            Experienced mathematics educator with 8+ years of teaching advanced calculus and algebra.
+            Experienced mathematics educator with 8+ years of teaching advanced
+            calculus and algebra.
           </Text>
-          
+
           <View style={styles.statsRow}>
             <View style={styles.stat}>
               <Text style={styles.statNumber}>4.9</Text>
@@ -98,11 +129,15 @@ export default function TutorProfile() {
             {Object.entries(notifications).map(([key, value]) => (
               <View key={key} style={styles.settingRow}>
                 <Text style={styles.settingLabel}>
-                  {key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase())}
+                  {key
+                    .replace(/([A-Z])/g, " $1")
+                    .replace(/^./, (str) => str.toUpperCase())}
                 </Text>
                 <Switch
                   value={value}
-                  onValueChange={(newValue) => updateNotification(key, newValue)}
+                  onValueChange={(newValue) =>
+                    updateNotification(key, newValue)
+                  }
                   trackColor={{ false: "#cbd5e1", true: "#3b82f6" }}
                   thumbColor="#ffffff"
                 />

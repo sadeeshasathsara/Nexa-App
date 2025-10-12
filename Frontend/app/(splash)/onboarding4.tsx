@@ -42,7 +42,7 @@ export default function OnboardingScreen4() {
           <Text style={styles.title}>Ready to Start?</Text>
           <Text style={styles.subtitle}>
             Join thousands of students and tutors already transforming their
-            learning and teaching experiences with LearnHub.
+            learning and teaching experiences with Nexa.
           </Text>
         </View>
 

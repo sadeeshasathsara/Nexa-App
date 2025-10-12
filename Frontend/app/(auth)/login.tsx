@@ -22,6 +22,7 @@ export default function LoginScreen() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [userType, setUserType] = useState("student"); // default to student
 
   const handleLogin = async () => {
     // Basic validation
@@ -41,17 +42,22 @@ export default function LoginScreen() {
 
     try {
       // Mock login process - in real app, you'd call your backend API
-      console.log("Login attempt:", { email: formData.email });
+      console.log("Login attempt:", { email: formData.email, userType });
 
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // For demo purposes, always succeed
-      // In real app, you'd check credentials and handle errors
+      // Redirect based on user type
       Alert.alert("Success", "Logged in successfully!", [
         {
           text: "Continue",
-          onPress: () => router.replace("/(tabs)"),
+          onPress: () => {
+            if (userType === "tutor") {
+              router.replace("/(tabs)/(tutor_tabs)");
+            } else {
+              router.replace("/(tabs)/(student_tabs)");
+            }
+          },
         },
       ]);
     } catch (error) {
@@ -148,6 +154,43 @@ export default function LoginScreen() {
                   />
                 </TouchableOpacity>
               </View>
+            </View>
+
+            {/* User Type Selection */}
+            <View style={styles.userTypeContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.userTypeButton,
+                  userType === "student" && styles.userTypeSelected,
+                ]}
+                onPress={() => setUserType("student")}
+              >
+                <Text
+                  style={[
+                    styles.userTypeText,
+                    userType === "student" && styles.userTypeTextSelected,
+                  ]}
+                >
+                  Student
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.userTypeButton,
+                  userType === "tutor" && styles.userTypeSelected,
+                ]}
+                onPress={() => setUserType("tutor")}
+              >
+                <Text
+                  style={[
+                    styles.userTypeText,
+                    userType === "tutor" && styles.userTypeTextSelected,
+                  ]}
+                >
+                  Tutor
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Forgot Password */}
@@ -369,5 +412,34 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     textDecorationLine: "underline",
+  },
+
+  // User Type Selection Styles
+  userTypeContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginVertical: 15,
+    gap: 10,
+  },
+  userTypeButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.5)",
+    backgroundColor: "transparent",
+    alignItems: "center",
+  },
+  userTypeSelected: {
+    backgroundColor: "rgba(255,255,255,0.3)",
+    borderColor: "#fff",
+  },
+  userTypeText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  userTypeTextSelected: {
+    fontWeight: "700",
   },
 });

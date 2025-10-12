@@ -25,11 +25,27 @@ export default function TutorDashboard() {
   const recentActivities = [
     { id: 1, type: "quiz", title: "Mathematics Basics", date: "2 hours ago" },
     { id: 2, type: "course", title: "Physics 101", date: "1 day ago" },
-    { id: 3, type: "student", title: "New student enrolled", date: "2 days ago" },
+    {
+      id: 3,
+      type: "student",
+      title: "New student enrolled",
+      date: "2 days ago",
+    },
   ];
 
   return (
-    <LinearGradient colors={["#b1c8f6ff","#b1c8f6ff", "#2f6dd1e5", "#3b86ffc6","#56c89eff" , "#3b86ffc6", "#3b82f6"]} style={styles.container}>
+    <LinearGradient
+      colors={[
+        "#b1c8f6ff",
+        "#b1c8f6ff",
+        "#2f6dd1e5",
+        "#3b86ffc6",
+        "#56c89eff",
+        "#3b86ffc6",
+        "#3b82f6",
+      ]}
+      style={styles.container}
+    >
       <ScrollView style={styles.scrollView}>
         {/* Header */}
         <View style={styles.header}>
@@ -70,14 +86,17 @@ export default function TutorDashboard() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={() => router.push("/(tutor_tabs)/quiz/generate_quiz")}
             >
               <Ionicons name="add-circle" size={32} color="#3b82f6" />
               <Text style={styles.actionText}>Create Quiz</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={() => router.push("/(tutor_tabs)/courses/course_list")}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push("/(tutor_tabs)/courses/course_list")}
+            >
               <Ionicons name="book" size={32} color="#3b82f6" />
               <Text style={styles.actionText}>New Course</Text>
             </TouchableOpacity>

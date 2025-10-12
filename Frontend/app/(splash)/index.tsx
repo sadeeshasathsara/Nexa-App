@@ -21,8 +21,8 @@ export default function SplashScreen() {
     <LinearGradient colors={["#667eea", "#764ba2"]} style={styles.container}>
       <View style={styles.logoContainer}>
         <Ionicons name="school" size={80} color="#fff" />
-        <Text style={styles.appName}>LearnHub</Text>
-        <Text style={styles.tagline}>Learn Without Limits</Text>
+        <Text style={styles.appName}>Nexa</Text>
+        <Text style={styles.tagline}>Get Next Level Learning Experience</Text>
       </View>
 
       <View style={styles.loadingContainer}>
