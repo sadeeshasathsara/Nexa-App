@@ -1,5 +1,5 @@
 // app/(tabs)/(quiz)/publish.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ScrollView,
   View,
@@ -7,23 +7,168 @@ import {
   TouchableOpacity,
   StyleSheet,
   Switch,
+  Alert,
+  Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { API_BASE_URL } from "../../../config/api";
 
 export default function PublishQuiz() {
   const router = useRouter();
+  const { quizId } = useLocalSearchParams();
+
+  const [quizData, setQuizData] = useState<any>({});
+  const [loading, setLoading] = useState(true);
 
   const [publishNow, setPublishNow] = useState(true);
   const [sendNotifications, setSendNotifications] = useState(true);
   const [showResults, setShowResults] = useState(false);
   const [allowRetakes, setAllowRetakes] = useState(false);
 
-  const handlePublish = () => {
-    // handle your publishing logic here (API call, etc.)
-    router.push("/(tutor_tabs)/quizzes"); // navigate to course details
+  const [publishing, setPublishing] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+
+  const [scheduledDate, setScheduledDate] = useState(new Date());
+  const [scheduledTime, setScheduledTime] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
+  useEffect(() => {
+    if (quizId) {
+      fetchQuizDetails();
+    }
+  }, [quizId]);
+
+  const fetchQuizDetails = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/quizzes/${quizId}`, {
+        credentials: 'include', // Include cookies for token
+      });
+      const data = await response.json();
+      if (data.success) {
+        setQuizData(data.data);
+      } else {
+        Alert.alert("Error", "Failed to fetch quiz details");
+      }
+    } catch (error) {
+      console.error("Error fetching quiz details:", error);
+      Alert.alert("Error", "Failed to fetch quiz details");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    if (event.type === 'set' && selectedDate) {
+      setScheduledDate(selectedDate);
+    }
+    setShowDatePicker(false);
+  };
+
+  const onTimeChange = (event: any, selectedTime?: Date) => {
+    if (event.type === 'set' && selectedTime) {
+      setScheduledTime(selectedTime);
+    }
+    setShowTimePicker(false);
+  };
+
+  const handlePublish = async () => {
+    setPublishing(true);
+    try {
+      const requestPayload = {
+        action: "publish",
+        settings: {
+          publishNow,
+          sendNotifications,
+          showResults,
+          allowRetakes,
+          ...(!publishNow && {
+            scheduledTime: new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate(), scheduledTime.getHours(), scheduledTime.getMinutes()).toISOString(),
+          }),
+        },
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/quizzes/${quizId}/publish`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestPayload),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        Alert.alert("Success", "Quiz published successfully!");
+        router.push("/(tutor_tabs)/quizzes");
+      } else {
+        Alert.alert("Error", data.message || "Failed to publish quiz");
+      }
+    } catch (error) {
+      console.error("Error publishing quiz:", error);
+      Alert.alert("Error", error instanceof Error ? error.message : "Failed to publish quiz");
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    setSavingDraft(true);
+    try {
+      const requestPayload = {
+        settings: {
+          sendNotifications,
+          showResults,
+          allowRetakes,
+          ...(!publishNow && {
+            scheduledPublishTime: new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate(), scheduledTime.getHours(), scheduledTime.getMinutes()).toISOString(),
+          }),
+        },
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/quizzes/${quizId}/publish`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestPayload),
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        Alert.alert("Success", "Quiz saved as draft successfully!");
+        router.push("/(tutor_tabs)/quizzes");
+      } else {
+        Alert.alert("Error", data.message || "Failed to save draft");
+      }
+    } catch (error) {
+      console.error("Error saving draft:", error);
+      Alert.alert("Error", "Failed to save draft");
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text>Loading quiz...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -31,13 +176,13 @@ export default function PublishQuiz() {
         {/* Header Card */}
         <View style={styles.quizCard}>
           <View style={styles.cardHeader}>
-            <Text style={styles.quizTitle}>JavaScript Fundamentals</Text>
+            <Text style={styles.quizTitle}>{quizData.title || "Quiz"}</Text>
             <View style={styles.draftTag}>
               <Text style={styles.draftText}>Draft</Text>
             </View>
           </View>
           <Text style={styles.quizSubtitle}>
-            Test your knowledge of JS basics
+            Test your knowledge of {quizData.title || "Quiz"}
           </Text>
           <View style={styles.quizMeta}>
             <View style={styles.metaItem}>
@@ -110,6 +255,54 @@ export default function PublishQuiz() {
           </TouchableOpacity>
         </View>
 
+        {/* Scheduling Options */}
+        {!publishNow && (
+          <>
+            <Text style={styles.sectionTitle}>Scheduling Options</Text>
+            <View style={styles.dateTimeRow}>
+              <TouchableOpacity
+                style={styles.dateTimeButton}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Ionicons name="calendar-outline" size={20} color="#5b21b6" />
+                <Text style={styles.dateTimeText}>
+                  {scheduledDate.toDateString()}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dateTimeButton}
+                onPress={() => setShowTimePicker(true)}
+              >
+                <Ionicons name="time-outline" size={20} color="#5b21b6" />
+                <Text style={styles.dateTimeText}>
+                  {scheduledTime.toLocaleTimeString()}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {showDatePicker && (
+              <DateTimePicker
+                testID="dateTimePicker"
+                value={scheduledDate}
+                mode="date"
+                is24Hour={true}
+                display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                onChange={onDateChange}
+                minimumDate={new Date()}
+              />
+            )}
+            {showTimePicker && (
+              <DateTimePicker
+                testID="timeTimePicker"
+                value={scheduledTime}
+                mode="time"
+                is24Hour={true}
+                display="spinner"
+                onChange={onTimeChange}
+              />
+            )}
+          </>
+        )}
+
         {/* Additional Settings */}
         <Text style={styles.sectionTitle}>Additional Settings</Text>
 
@@ -140,11 +333,33 @@ export default function PublishQuiz() {
 
         {/* Buttons */}
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.saveDraft}>
-            <Text style={styles.saveDraftText}>Save Draft</Text>
+          <TouchableOpacity
+            style={[styles.saveDraft, savingDraft && styles.buttonDisabled]}
+            onPress={handleSaveDraft}
+            disabled={savingDraft || publishing}
+          >
+            {savingDraft ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#000" />
+                <Text style={styles.saveDraftText}>Saving...</Text>
+              </View>
+            ) : (
+              <Text style={styles.saveDraftText}>Save Draft</Text>
+            )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.publishNow} onPress={handlePublish}>
-            <Text style={styles.publishNowText}>Publish Now</Text>
+          <TouchableOpacity
+            style={[styles.publishNow, publishing && styles.buttonDisabled]}
+            onPress={handlePublish}
+            disabled={publishing || savingDraft}
+          >
+            {publishing ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={styles.publishNowText}>Publishing...</Text>
+              </View>
+            ) : (
+              <Text style={styles.publishNowText}>Publish Now</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -235,4 +450,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   publishNowText: { color: "#fff", fontWeight: "600" },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  dateTimeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  dateTimeButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    marginHorizontal: 4,
+    backgroundColor: "#f9f9f9",
+  },
+  dateTimeText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: "#333",
+  },
 });

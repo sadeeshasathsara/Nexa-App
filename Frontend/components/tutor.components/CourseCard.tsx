@@ -1,45 +1,48 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
 interface Course {
-  id: string;
+  _id: string;
   title: string;
-  subtitle: string;
-  progress: number;
-  lessons: number;
-  hours: string;
+  category: string;
+  description: string;
+  rating: number;
+  enrollments: number;
+  durationWeeks: number;
+  difficulty: string;
+  imageUrl: string;
+  instructor: {
+    _id: string;
+    fullName: string;
+  };
 }
 
 interface CourseCardProps {
   course: Course;
+  from?: string;
 }
 
-const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
+const CourseCard: React.FC<CourseCardProps> = ({ course, from }) => {
   const router = useRouter();
 
   const handlePress = () => {
-    router.replace(`(tabs)/course_details/${course.id}`);
+    router.push({
+      pathname: `(tabs)/course_details/${course._id}`,
+      params: { from: from || 'tutor' },
+    });
+  };
+
+  const truncateDescription = (text: string, maxLength: number) => {
+    return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
   };
 
   return (
     <TouchableOpacity style={styles.card} onPress={handlePress}>
-      <View style={styles.header}>
+      <Image source={{ uri: course.imageUrl }} style={styles.image} />
+      <View style={styles.content}>
         <Text style={styles.title}>{course.title}</Text>
-        <Text style={styles.subtitle}>{course.subtitle}</Text>
-      </View>
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View
-            style={[styles.progressFill, { width: `${course.progress}%` }]}
-          />
-        </View>
-        <Text style={styles.progressText}>{course.progress}%</Text>
-      </View>
-      <View style={styles.footer}>
-        <Text style={styles.lessons}>
-          {course.lessons} lessons • {course.hours}
-        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -47,62 +50,86 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
     padding: 16,
     marginVertical: 8,
-    marginHorizontal: 16,
+    marginHorizontal: 8,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+    width: 280,
+    height: 120,
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
+    overflow: "hidden",
+  },
+  image: {
+    width: 88,
+    height: 88,
+    borderRadius: 12,
+    marginRight: 16,
+    borderWidth: 2,
+    borderColor: "#e0e0e0",
+  },
+  content: {
+    flex: 1,
+    justifyContent: "center",
   },
   header: {
     marginBottom: 12,
   },
   title: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#1a1a1a",
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1f2937",
     marginBottom: 4,
+    lineHeight: 22,
   },
-  subtitle: {
+  category: {
     fontSize: 14,
     color: "#666",
+    fontWeight: "500",
   },
-  progressContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+  instructor: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+  },
+  description: {
+    fontSize: 14,
+    color: "#666",
+    lineHeight: 20,
     marginBottom: 12,
   },
-  progressBar: {
-    flex: 1,
-    height: 6,
-    backgroundColor: "#e9ecef",
-    borderRadius: 3,
-    marginRight: 12,
-    overflow: "hidden",
+  statsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#007AFF",
-    borderRadius: 3,
+  stat: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
-  progressText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#007AFF",
-    minWidth: 40,
-  },
-  footer: {
-    borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
-    paddingTop: 12,
-  },
-  lessons: {
-    fontSize: 14,
+  statText: {
+    fontSize: 12,
     color: "#666",
+    fontWeight: "500",
+  },
+  difficultyBadge: {
+    backgroundColor: "#f3f4f6",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  difficultyText: {
+    fontSize: 12,
+    color: "#374151",
+    fontWeight: "600",
   },
 });
 

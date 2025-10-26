@@ -12,7 +12,7 @@ export default function QuizLayout() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
       <Stack
         screenOptions={{
-          headerShown: true,
+          headerShown: false,
           headerTitleAlign: "center",
           headerShadowVisible: false,
           headerStyle: { backgroundColor: "#fff" },

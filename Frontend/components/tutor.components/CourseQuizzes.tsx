@@ -1,11 +1,14 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Animated,
+  Easing,
 } from "react-native";
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from "expo-router";
 import { Quiz } from "../../types/course";
 
@@ -14,12 +17,14 @@ interface CourseQuizzesProps {
   onQuizPress?: (quizId: string) => void;
   onReviewPress?: (quizId: string) => void;
   onGenerateQuiz?: () => void;
+  isStudent?: boolean;
 }
 
 const CourseQuizzes: React.FC<CourseQuizzesProps> = ({
   quizzes,
   onQuizPress,
   onReviewPress,
+  isStudent = false,
 }) => {
   const router = useRouter();
 
@@ -37,9 +42,9 @@ const CourseQuizzes: React.FC<CourseQuizzesProps> = ({
   };
 
   const handleQuizPress = (quizId: string) => {
-    if (onQuizPress) {
-      onQuizPress(quizId);
-    }
+    router.push({
+      pathname: `/(tabs)/(quiz)/take?quizId=${quizId}`,
+    });
   };
 
   const handleReviewPress = (quizId: string) => {
@@ -54,18 +59,29 @@ const CourseQuizzes: React.FC<CourseQuizzesProps> = ({
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {quizzes.map((quiz) => (
-        <View key={quiz.id} style={styles.quizItem}>
+      {quizzes.map((quiz, index) => (
+        <View key={quiz._id || quiz.id || index} style={[
+          styles.quizItem,
+          quiz.type === 'quiz' ? styles.quizItemQuiz : styles.quizItemAssignment
+        ]}>
           <View style={styles.quizHeader}>
             <Text style={styles.quizTitle}>{quiz.title}</Text>
-            <Text
-              style={[
-                styles.quizDifficulty,
-                { color: getDifficultyColor(quiz.difficulty) },
-              ]}
-            >
-              {quiz.difficulty}
-            </Text>
+            <View style={styles.quizTypeContainer}>
+              <Text style={[
+                styles.quizType,
+                quiz.type === 'quiz' ? styles.quizTypeQuiz : styles.quizTypeAssignment
+              ]}>
+                {quiz.type === 'quiz' ? 'Quiz' : 'Assignment'}
+              </Text>
+              <Text
+                style={[
+                  styles.quizDifficulty,
+                  { color: getDifficultyColor(quiz.difficulty) },
+                ]}
+              >
+                {quiz.difficulty}
+              </Text>
+            </View>
           </View>
 
           <Text style={styles.quizDetails}>
@@ -95,12 +111,14 @@ const CourseQuizzes: React.FC<CourseQuizzesProps> = ({
         </View>
       ))}
 
-      <TouchableOpacity
-        style={styles.aiQuizButton}
-        onPress={handleGenerateQuiz}
-      >
-        <Text style={styles.aiQuizButtonText}>✨ Generate Quiz with AI</Text>
-      </TouchableOpacity>
+      {!isStudent && (
+        <TouchableOpacity
+          style={styles.aiQuizButton}
+          onPress={handleGenerateQuiz}
+        >
+          <Text style={styles.aiQuizButtonText}>✨ Generate Quiz with AI</Text>
+        </TouchableOpacity>
+      )}
 
       <View style={styles.quizStats}>
         <Text style={styles.quizStatsText}>
@@ -123,6 +141,16 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 12,
   },
+  quizItemQuiz: {
+    backgroundColor: "#e3f2fd",
+    borderLeftWidth: 4,
+    borderLeftColor: "#2196f3",
+  },
+  quizItemAssignment: {
+    backgroundColor: "#f3e5f5",
+    borderLeftWidth: 4,
+    borderLeftColor: "#9c27b0",
+  },
   quizHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -139,6 +167,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     marginLeft: 8,
+  },
+  quizTypeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  quizType: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#007AFF",
+    backgroundColor: "rgba(0, 122, 255, 0.1)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  quizTypeQuiz: {
+    color: "#2196f3",
+    backgroundColor: "rgba(33, 150, 243, 0.1)",
+  },
+  quizTypeAssignment: {
+    color: "#9c27b0",
+    backgroundColor: "rgba(156, 39, 176, 0.1)",
   },
   quizDetails: {
     fontSize: 14,

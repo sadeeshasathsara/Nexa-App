@@ -8,14 +8,14 @@ export default function CourseDetailLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: true,
+        headerShown: false,
         headerBackTitle: "Back",
       }}
     >
       <Stack.Screen
         name="[id]"
         options={{
-          headerShown: true,
+          headerShown: false,
           title: "Course Details",
           headerLeft: () => (
             <TouchableOpacity

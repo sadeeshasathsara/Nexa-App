@@ -4,34 +4,156 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Animated,
+  RefreshControl,
+  FlatList,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useState, useEffect, useRef } from "react";
+import { API_BASE_URL } from "../../../config/api";
+import CourseCard from "../../../components/tutor.components/CourseCard";
+
+const SkeletonLoader = ({ width, height, borderRadius }: { width: number | string; height: number; borderRadius?: number }) => {
+  const fadeAnim = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const animate = () => {
+      Animated.sequence([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 0.3,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start(() => animate());
+    };
+    animate();
+  }, [fadeAnim]);
+
+  return (
+    <Animated.View
+      style={{
+        width: width as any,
+        height,
+        backgroundColor: '#e0e0e0',
+        borderRadius: borderRadius || 8,
+        opacity: fadeAnim,
+      }}
+    />
+  );
+};
 
 export default function StudentHome() {
   const router = useRouter();
+  const [summaryMetrics, setSummaryMetrics] = useState<any[]>([]);
+  const [recommendedCourses, setRecommendedCourses] = useState<any[]>([]);
+  const [featuredCourses, setFeaturedCourses] = useState<any[]>([]);
+  const [userName, setUserName] = useState<string>('');
+  const [upcomingSessions, setUpcomingSessions] = useState<any[]>([]);
+  const [isProfileLoading, setIsProfileLoading] = useState<boolean>(true);
+  const [isSummaryLoading, setIsSummaryLoading] = useState<boolean>(true);
+  const [isRecommendationsLoading, setIsRecommendationsLoading] = useState<boolean>(true);
+  const [isCoursesLoading, setIsCoursesLoading] = useState<boolean>(true);
+  const [isSessionsLoading, setIsSessionsLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  const featuredCourses = [
-    { id: 1, title: "Mathematics 101", instructor: "Dr. Smith", progress: 75 },
-    {
-      id: 2,
-      title: "Physics Basics",
-      instructor: "Prof. Johnson",
-      progress: 40,
-    },
-    {
-      id: 3,
-      title: "English Literature",
-      instructor: "Dr. Williams",
-      progress: 20,
-    },
-  ];
+  const fetchData = async () => {
+    try {
+      // Fetch user profile
+      setIsProfileLoading(true);
+      const profileResponse = await fetch(`${API_BASE_URL}/api/users/profile`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      const profileData = await profileResponse.json();
+      if (profileData.success) {
+        setUserName(profileData.data.fullName);
+      }
+      setIsProfileLoading(false);
 
-  const upcomingSessions = [
-    { id: 1, course: "Mathematics", time: "10:00 AM", tutor: "Dr. Smith" },
-    { id: 2, course: "Physics", time: "2:00 PM", tutor: "Prof. Johnson" },
-  ];
+      // Fetch summary metrics
+      setIsSummaryLoading(true);
+      const summaryResponse = await fetch(`${API_BASE_URL}/api/users/summary`, {
+        method: 'GET',
+        credentials: 'include', // Include cookies for token
+      });
+      const summaryData = await summaryResponse.json();
+      if (summaryData.success) {
+        setSummaryMetrics(summaryData.data.summaryMetrics);
+      }
+      setIsSummaryLoading(false);
+
+      // Fetch featured courses
+      setIsCoursesLoading(true);
+      const coursesResponse = await fetch(`${API_BASE_URL}/api/courses/featured`, {
+        method: 'GET',
+      });
+      const coursesData = await coursesResponse.json();
+      if (coursesData.success) {
+        // Map to the required format
+        const mappedCourses = coursesData.data.map((course: any, index: number) => ({
+          id: course._id || course.id,
+          title: course.title,
+          instructor: course.instructor.fullName,
+          progress: 40, // Hardcoded as per user request
+        }));
+        setFeaturedCourses(mappedCourses);
+      }
+      setIsCoursesLoading(false);
+
+      // Fetch recommended courses
+      setIsRecommendationsLoading(true);
+      const recommendationsResponse = await fetch(`${API_BASE_URL}/api/courses/recommendations`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      const recommendationsData = await recommendationsResponse.json();
+      if (recommendationsData.success) {
+        setRecommendedCourses(recommendationsData.data);
+      }
+      setIsRecommendationsLoading(false);
+
+      // Fetch upcoming sessions
+      setIsSessionsLoading(true);
+      const sessionsResponse = await fetch(`${API_BASE_URL}/api/schedule/upcoming`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      const sessionsData = await sessionsResponse.json();
+      if (sessionsData.success) {
+        // Map to the required format
+        const mappedSessions = sessionsData.data.map((session: any, index: number) => ({
+          id: session._id || session.id,
+          course: session.course.category,
+          time: new Date(session.sessionTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+          tutor: session.tutor.fullName,
+        }));
+        setUpcomingSessions(mappedSessions);
+      }
+      setIsSessionsLoading(false);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setIsProfileLoading(false);
+      setIsSummaryLoading(false);
+      setIsCoursesLoading(false);
+      setIsSessionsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchData().finally(() => setRefreshing(false));
+  };
 
   return (
     <View style={styles.container}>
@@ -40,7 +162,7 @@ export default function StudentHome() {
         <View style={styles.headerContent}>
           <View>
             <Text style={styles.greeting}>Good morning,</Text>
-            <Text style={styles.name}>John Student! 👋</Text>
+            <Text style={styles.name}>{userName}! 👋</Text>
           </View>
           <TouchableOpacity style={styles.notificationButton}>
             <Ionicons name="notifications-outline" size={24} color="#333" />
@@ -53,24 +175,76 @@ export default function StudentHome() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Ionicons name="book" size={24} color="#667eea" />
-            <Text style={styles.statNumber}>5</Text>
-            <Text style={styles.statLabel}>Courses</Text>
+          {isSummaryLoading ? (
+            Array.from({ length: 3 }).map((_, index) => (
+              <View key={index} style={styles.statCard}>
+                <SkeletonLoader width={24} height={24} borderRadius={12} />
+                <SkeletonLoader width={40} height={20} />
+                <SkeletonLoader width={50} height={12} />
+              </View>
+            ))
+          ) : (
+            summaryMetrics.map((metric, index) => {
+              const iconName = metric.icon === 'book' ? 'book' : metric.icon === 'clock' ? 'time' : 'trophy';
+              const color = index === 0 ? '#667eea' : index === 1 ? '#4facfe' : '#42e695';
+              return (
+                <View key={index} style={styles.statCard}>
+                  <Ionicons name={iconName} size={24} color={color} />
+                  <Text style={styles.statNumber}>{metric.value}</Text>
+                  <Text style={styles.statLabel}>{metric.label}</Text>
+                </View>
+              );
+            })
+          )}
+        </View>
+
+        {/* Recommended Courses */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recommended for You</Text>
+            <TouchableOpacity onPress={() => router.push({
+              pathname: "/recommended",
+              params: { courses: JSON.stringify(recommendedCourses) }
+            })}>
+              <Text style={styles.seeAllText}>See All</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.statCard}>
-            <Ionicons name="time" size={24} color="#4facfe" />
-            <Text style={styles.statNumber}>12</Text>
-            <Text style={styles.statLabel}>Hours</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="trophy" size={24} color="#42e695" />
-            <Text style={styles.statNumber}>3</Text>
-            <Text style={styles.statLabel}>Achievements</Text>
-          </View>
+          {isRecommendationsLoading ? (
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              data={Array.from({ length: 3 })}
+              keyExtractor={(_, index) => index.toString()}
+              renderItem={() => (
+                <View style={styles.recommendedSkeletonCard}>
+                  <SkeletonLoader width={88} height={88} borderRadius={12} />
+                  <View style={styles.skeletonContent}>
+                    <SkeletonLoader width="70%" height={16} />
+                  </View>
+                </View>
+              )}
+              contentContainerStyle={styles.recommendedList}
+            />
+          ) : (
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              data={recommendedCourses}
+              keyExtractor={(item) => item._id}
+              renderItem={({ item }) => (
+                <View style={styles.recommendedCard}>
+                  <CourseCard course={item} from="student" />
+                </View>
+              )}
+              contentContainerStyle={styles.recommendedList}
+            />
+          )}
         </View>
 
         {/* Featured Courses */}
@@ -81,28 +255,44 @@ export default function StudentHome() {
               <Text style={styles.seeAllText}>See All</Text>
             </TouchableOpacity>
           </View>
-          {featuredCourses.map((course) => (
-            <TouchableOpacity key={course.id} style={styles.courseCard}>
-              <View style={styles.courseIcon}>
-                <Ionicons name="book" size={24} color="#667eea" />
-              </View>
-              <View style={styles.courseInfo}>
-                <Text style={styles.courseTitle}>{course.title}</Text>
-                <Text style={styles.courseInstructor}>{course.instructor}</Text>
-                <View style={styles.progressContainer}>
-                  <View style={styles.progressBar}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        { width: `${course.progress}%` },
-                      ]}
-                    />
+          {isCoursesLoading ? (
+            Array.from({ length: 3 }).map((_, index) => (
+              <View key={index} style={styles.courseCard}>
+                <SkeletonLoader width={50} height={50} borderRadius={25} />
+                <View style={styles.courseInfo}>
+                  <SkeletonLoader width="70%" height={16} />
+                  <SkeletonLoader width="50%" height={14} />
+                  <View style={styles.progressContainer}>
+                    <SkeletonLoader width="100%" height={6} borderRadius={3} />
+                    <SkeletonLoader width={30} height={12} />
                   </View>
-                  <Text style={styles.progressText}>{course.progress}%</Text>
                 </View>
               </View>
-            </TouchableOpacity>
-          ))}
+            ))
+          ) : (
+            featuredCourses.map((course) => (
+              <TouchableOpacity key={course.id} style={styles.courseCard} onPress={() => router.push(`/course_details/${course.id}`)}>
+                <View style={styles.courseIcon}>
+                  <Ionicons name="book" size={24} color="#667eea" />
+                </View>
+                <View style={styles.courseInfo}>
+                  <Text style={styles.courseTitle}>{course.title}</Text>
+                  <Text style={styles.courseInstructor}>{course.instructor}</Text>
+                  <View style={styles.progressContainer}>
+                    <View style={styles.progressBar}>
+                      <View
+                        style={[
+                          styles.progressFill,
+                          { width: `${course.progress}%` },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.progressText}>{course.progress}%</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
 
         {/* Upcoming Sessions */}
@@ -113,18 +303,31 @@ export default function StudentHome() {
               <Text style={styles.seeAllText}>See All</Text>
             </TouchableOpacity>
           </View>
-          {upcomingSessions.map((session) => (
-            <TouchableOpacity key={session.id} style={styles.sessionCard}>
-              <View style={styles.sessionTime}>
-                <Text style={styles.sessionTimeText}>{session.time}</Text>
+          {isSessionsLoading ? (
+            Array.from({ length: 3 }).map((_, index) => (
+              <View key={index} style={styles.sessionCard}>
+                <SkeletonLoader width={60} height={30} borderRadius={10} />
+                <View style={styles.sessionInfo}>
+                  <SkeletonLoader width="60%" height={16} />
+                  <SkeletonLoader width="40%" height={14} />
+                </View>
+                <SkeletonLoader width={20} height={20} borderRadius={10} />
               </View>
-              <View style={styles.sessionInfo}>
-                <Text style={styles.sessionCourse}>{session.course}</Text>
-                <Text style={styles.sessionTutor}>with {session.tutor}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#999" />
-            </TouchableOpacity>
-          ))}
+            ))
+          ) : (
+            upcomingSessions.map((session) => (
+              <TouchableOpacity key={session.id} style={styles.sessionCard} onPress={() => router.push(`/course_details/${session.id}`)}>
+                <View style={styles.sessionTime}>
+                  <Text style={styles.sessionTimeText}>{session.time}</Text>
+                </View>
+                <View style={styles.sessionInfo}>
+                  <Text style={styles.sessionCourse}>{session.course}</Text>
+                  <Text style={styles.sessionTutor}>with {session.tutor}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#999" />
+              </TouchableOpacity>
+            ))
+          )}
         </View>
 
         {/* Quick Actions */}
@@ -375,5 +578,33 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 20, // Extra space at bottom
+  },
+  recommendedSkeletonCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 16,
+    marginVertical: 8,
+    marginHorizontal: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+    width: 280,
+    height: 120,
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
+    overflow: "hidden",
+  },
+  skeletonContent: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  recommendedList: {
+    paddingHorizontal: 0,
+  },
+  recommendedCard: {
+    marginRight: 15,
   },
 });

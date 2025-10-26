@@ -1,97 +1,74 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter, usePathname } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import CourseOverview from "../../../components/tutor.components/CourseOverview";
 import CourseLessons from "../../../components/tutor.components/CourseLessons";
 import CourseQuizzes from "../../../components/tutor.components/CourseQuizzes";
 import CourseChat from "../../../components/tutor.components/CourseChat";
 import { Course } from "../../../types/course";
+import { API_BASE_URL } from "../../../config/api";
 
 const CourseDetail: React.FC = () => {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{ id: string; from: string }>();
+  const router = useRouter();
+  const pathname = usePathname();
   const [activeTab, setActiveTab] = useState<
-    "overview" | "lessons" | "quizzes" | "chat"
+    "overview" | "lessons" | "evaluation" | "chat"
   >("overview");
+  const [course, setCourse] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isEnrolling, setIsEnrolling] = useState<boolean>(false);
 
-  // Mock course data - replace with actual data fetching
-  const course: Course = {
-    id: id || "1",
-    title: "JavaScript Fundamentals",
-    subtitle: "JS 12 lessons • 8 hours",
-    progress: 75,
-    overview:
-      "Learn the fundamentals of JavaScript programming including variables, data types, functions, scope, arrays, objects, and more. This course will take you from beginner to proficient in JavaScript.",
-    lessons: [
-      {
-        id: "1",
-        title: "Variables and Data Types",
-        duration: "30 min",
-        completed: true,
-      },
-      {
-        id: "2",
-        title: "Functions and Scope",
-        duration: "45 min",
-        completed: true,
-      },
-      {
-        id: "3",
-        title: "Arrays and Objects",
-        duration: "60 min",
-        completed: false,
-      },
-      {
-        id: "4",
-        title: "DOM Manipulation",
-        duration: "50 min",
-        completed: false,
-      },
-      {
-        id: "5",
-        title: "Event Handling",
-        duration: "40 min",
-        completed: false,
-      },
-    ],
-    quizzes: [
-      {
-        id: "1",
-        title: "Variables and Data Types",
-        questions: 10,
-        duration: "5 min",
-        difficulty: "Easy",
-        completed: true,
-        score: 85,
-      },
-      {
-        id: "2",
-        title: "Functions and Scope",
-        questions: 12,
-        duration: "8 min",
-        difficulty: "Medium",
-        completed: true,
-        score: 92,
-      },
-      {
-        id: "3",
-        title: "Arrays and Objects",
-        questions: 15,
-        duration: "10 min",
-        difficulty: "Medium",
-        completed: false,
-      },
-    ],
-  };
+  useEffect(() => {
+    const fetchCourseDetails = async () => {
+      if (!id) return;
+
+      try {
+        setIsLoading(true);
+        const response = await fetch(`${API_BASE_URL}/api/courses/${id}`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          setCourse(data.data);
+        } else {
+          setError(data.message || 'Failed to fetch course details');
+        }
+      } catch (err) {
+        console.error('Error fetching course details:', err);
+        setError('Failed to load course details');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCourseDetails();
+  }, [id]);
 
   const handleLessonPress = (lessonId: string) => {
-    console.log("Lesson pressed:", lessonId);
-    // Navigate to lesson detail or start lesson
+    const lesson = course.lessons.find((l: any) => l._id === lessonId);
+    if (lesson) {
+      router.push({
+        pathname: '/(tabs)/lesson_details/[id]',
+        params: {
+          id: lessonId,
+          lesson: JSON.stringify(lesson),
+          from: from || '',
+          courseId: id,
+        },
+      });
+    }
   };
 
   const handleQuizPress = (quizId: string) => {
@@ -109,27 +86,102 @@ const CourseDetail: React.FC = () => {
     // Generate AI quiz logic
   };
 
+  const handleEnroll = async () => {
+    if (!course || course.isEnrolled) return;
+
+    try {
+      setIsEnrolling(true);
+      const response = await fetch(`${API_BASE_URL}/api/courses/${id}/enroll`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        // Reload the page to fetch updated course data
+        router.replace(pathname);
+      } else {
+        console.error('Enrollment failed:', data.message);
+        // Show error message to user
+      }
+    } catch (error) {
+      console.error('Error enrolling in course:', error);
+      // Show error message to user
+    } finally {
+      setIsEnrolling(false);
+    }
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case "overview":
         return <CourseOverview course={course} />;
 
       case "lessons":
+        if (from === 'student' && !course.isEnrolled) {
+          return (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>Enroll in this course to access lessons.</Text>
+            </View>
+          );
+        }
+        if (!course.lessons || course.lessons.length === 0) {
+          return (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No lessons available for this course.</Text>
+            </View>
+          );
+        }
         return (
           <CourseLessons course={course} onLessonPress={handleLessonPress} />
         );
 
-      case "quizzes":
+      case "evaluation":
+        if (from === 'student' && !course.isEnrolled) {
+          return (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>Enroll in this course to access evaluations.</Text>
+            </View>
+          );
+        }
+        const evaluations = [
+          ...(course.assignments || []),
+          ...(course.quizzes || []).map((quiz: any) => ({
+            ...quiz,
+            type: 'quiz',
+            title: quiz.title,
+            questions: quiz.questions?.length || 0,
+            difficulty: quiz.difficulty,
+            id: quiz._id,
+            duration: 'N/A', // or calculate if needed
+            createdAt: quiz.createdAt,
+          })),
+        ];
+        if (evaluations.length === 0) {
+          return (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No evaluations available for this course.</Text>
+            </View>
+          );
+        }
         return (
           <CourseQuizzes
-            quizzes={course.quizzes}
+            quizzes={evaluations}
             onQuizPress={handleQuizPress}
             onReviewPress={handleReviewPress}
             onGenerateQuiz={handleGenerateQuiz}
+            isStudent={from === 'student'}
           />
         );
 
       case "chat":
+        if (from === 'student' && !course.isEnrolled) {
+          return (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>Enroll in this course to access chat.</Text>
+            </View>
+          );
+        }
         return <CourseChat />;
 
       default:
@@ -137,15 +189,66 @@ const CourseDetail: React.FC = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#667eea" />
+        <Text style={styles.loadingText}>Loading course details...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
+
+  if (!course) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Course not found</Text>
+      </View>
+    );
+  }
+
+  const handleBackPress = () => {
+    if (from === 'student') {
+      router.push('/(tabs)/(student_tabs)/courses');
+    } else if (from === 'tutor') {
+      router.push('/(tabs)/(tutor_tabs)/courses');
+    } else {
+      router.back();
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
+          <Text style={styles.backButtonText}>← Back</Text>
+        </TouchableOpacity>
         <Text style={styles.courseTitle}>{course.title}</Text>
-        <Text style={styles.courseSubtitle}>{course.subtitle}</Text>
+        <Text style={styles.courseSubtitle}>
+          {course.category} • {course.difficulty} • {course.durationWeeks} weeks
+        </Text>
+        {from === 'student' && !course.isEnrolled && (
+          <TouchableOpacity
+            style={[styles.enrollButton, isEnrolling && styles.enrollButtonDisabled]}
+            onPress={handleEnroll}
+            disabled={isEnrolling}
+          >
+            <Text style={styles.enrollButtonText}>
+              {isEnrolling ? 'Enrolling...' : 'Enroll Now'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.tabContainer}>
-        {(["overview", "lessons", "quizzes", "chat"] as const).map((tab) => (
+        {(["overview", "lessons", "evaluation", "chat"] as const).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.tab, activeTab === tab && styles.activeTab]}
@@ -164,6 +267,19 @@ const CourseDetail: React.FC = () => {
       </View>
 
       <View style={styles.content}>{renderTabContent()}</View>
+
+      {/* Floating Chatbot Button - Hidden only when on Chat tab */}
+      {activeTab !== "chat" && (
+        <TouchableOpacity
+          style={styles.chatbotButton}
+          onPress={() => router.push({
+            pathname: "/(tabs)/(chatbot)",
+            params: { courseId: id }
+          })}
+        >
+          <Ionicons name="chatbubbles-outline" size={24} color="#fff" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -212,6 +328,83 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#666",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#ff4444",
+    textAlign: "center",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+  },
+  backButton: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: "#007AFF",
+    fontWeight: "500",
+  },
+  enrollButton: {
+    backgroundColor: "#667eea",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 12,
+    alignSelf: "flex-start",
+  },
+  enrollButtonDisabled: {
+    backgroundColor: "#ccc",
+  },
+  enrollButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  // Floating Chatbot Button
+  chatbotButton: {
+    position: "absolute",
+    bottom: 30,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#667eea",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
 });
 

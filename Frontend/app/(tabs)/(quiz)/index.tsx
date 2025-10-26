@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,13 @@ import {
   StyleSheet,
   Switch,
   Alert,
+  ActivityIndicator,
+  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import * as DocumentPicker from 'expo-document-picker';
+import { API_BASE_URL } from "../../../config/api";
 
 interface Lesson {
   id: string;
@@ -19,6 +23,8 @@ interface Lesson {
   size: string;
   updated: string;
   selected: boolean;
+  description: string;
+  pdfCount: number;
 }
 
 interface Document {
@@ -26,6 +32,7 @@ interface Document {
   name: string;
   size: string;
   selected: boolean;
+  asset?: any; // Store the file asset from DocumentPicker
 }
 
 interface QuizSettings {
@@ -40,50 +47,14 @@ interface QuizSettings {
 
 const QuizGenerator: React.FC = () => {
   const router = useRouter();
+  const { courseId } = useLocalSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
-  const [lessons, setLessons] = useState<Lesson[]>([
-    {
-      id: "1",
-      title: "Introduction to React",
-      pages: 24,
-      size: "2.4 MB",
-      updated: "2 days ago",
-      selected: false,
-    },
-    {
-      id: "2",
-      title: "State Management",
-      pages: 18,
-      size: "18 MB",
-      updated: "1 week ago",
-      selected: false,
-    },
-    {
-      id: "3",
-      title: "Component Lifecycle",
-      pages: 32,
-      size: "31 MB",
-      updated: "3 days ago",
-      selected: false,
-    },
-    {
-      id: "4",
-      title: "Hooks and Context",
-      pages: 28,
-      size: "2.7 MB",
-      updated: "5 days ago",
-      selected: false,
-    },
-  ]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [course, setCourse] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [generatingQuiz, setGeneratingQuiz] = useState(false);
 
-  const [documents, setDocuments] = useState<Document[]>([
-    {
-      id: "1",
-      name: "Advanced Topics.pdf",
-      size: "12 MB",
-      selected: false,
-    },
-  ]);
+  const [documents, setDocuments] = useState<Document[]>([]);
 
   const [quizSettings, setQuizSettings] = useState<QuizSettings>({
     numberOfQuestions: 10,
@@ -94,6 +65,41 @@ const QuizGenerator: React.FC = () => {
       shortAnswer: false,
     },
   });
+
+  useEffect(() => {
+    if (courseId) {
+      fetchCourseDetails();
+    }
+  }, [courseId]);
+
+  const fetchCourseDetails = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}`);
+      const data = await response.json();
+      if (data.success) {
+        setCourse(data.data);
+        // Transform lessons data to match the interface
+        const transformedLessons = data.data.lessons.map((lesson: any, index: number) => ({
+          id: lesson._id || (index + 1).toString(),
+          title: lesson.title,
+          pages: lesson.pages || 10, // Default if not provided
+          size: lesson.size || "1 MB", // Default if not provided
+          updated: lesson.updatedAt ? new Date(lesson.updatedAt).toLocaleDateString() : "Recently",
+          selected: false,
+          description: lesson.description || "No description available",
+          pdfCount: lesson.materials ? lesson.materials.filter((m: any) => m.materialType === 'PDF').length : 0,
+        }));
+        setLessons(transformedLessons);
+      } else {
+        Alert.alert("Error", "Failed to fetch course details");
+      }
+    } catch (error) {
+      console.error("Error fetching course details:", error);
+      Alert.alert("Error", "Failed to fetch course details");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const toggleLessonSelection = (lessonId: string) => {
     setLessons((prev) =>
@@ -146,7 +152,34 @@ const QuizGenerator: React.FC = () => {
     }));
   };
 
-  const handleGenerateQuiz = () => {
+  const handleFileSelection = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        copyToCacheDirectory: true,
+        multiple: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const newDocuments = result.assets.map((asset: any, index: number) => ({
+        id: `uploaded_${Date.now()}_${index}`,
+        name: asset.name,
+        size: `${(asset.size / (1024 * 1024)).toFixed(2)} MB`,
+        selected: false,
+        asset: asset,
+      }));
+
+      setDocuments(prev => [...prev, ...newDocuments]);
+    } catch (error) {
+      console.error('Error picking documents:', error);
+      Alert.alert('Error', 'Failed to select documents');
+    }
+  };
+
+  const handleGenerateQuiz = async () => {
     const selectedLessons = lessons.filter((lesson) => lesson.selected);
     const selectedDocs = documents.filter((doc) => doc.selected);
 
@@ -154,13 +187,54 @@ const QuizGenerator: React.FC = () => {
       Alert.alert("Error", "Please select at least one lesson or document.");
       return;
     }
-    router.push("/(quiz)/review");
-    Alert.alert(
-      "Quiz Generated",
-      `Creating quiz with ${quizSettings.numberOfQuestions} questions from ${selectedLessons.length} lessons and ${selectedDocs.length} documents.`
-    );
 
-    // Here you would typically navigate to the quiz or generate the quiz content
+    setGeneratingQuiz(true);
+
+    try {
+      const data = {
+        courseId: courseId as string,
+        selectedLessons: selectedLessons.map(lesson => lesson.id),
+        selectedDocuments: selectedDocs.map(doc => doc.id),
+        quizSettings: quizSettings,
+      };
+
+      console.log('Generate Quiz Data:', data);
+
+      const response = await fetch(`${API_BASE_URL}/api/quizzes/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+        credentials: 'include', // Include cookies for token
+      });
+
+      let responseData;
+      try {
+        responseData = await response.json();
+        console.log('Quiz Generation Response:', responseData);
+      } catch (parseError) {
+        console.error('Failed to parse JSON:', parseError);
+        const text = await response.text();
+        console.error('Response text:', text);
+        throw new Error('Invalid JSON response from server');
+      }
+
+      if (responseData.success) {
+        console.log('Quiz generated successfully! Quiz ID:', responseData.data._id);
+        router.push({
+          pathname: "/(quiz)/review",
+          params: { quizId: responseData.data._id }
+        });
+      } else {
+        Alert.alert("Error", responseData.message || "Failed to generate quiz");
+      }
+    } catch (error) {
+      console.error("Error generating quiz:", error);
+      Alert.alert("Error", "Failed to generate quiz");
+    } finally {
+      setGeneratingQuiz(false);
+    }
   };
 
   const selectedLessonsCount = lessons.filter(
@@ -172,6 +246,50 @@ const QuizGenerator: React.FC = () => {
   const filteredLessons = lessons.filter((lesson) =>
     lesson.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Skeleton Loader Component
+  const LessonSkeleton = () => {
+    const pulseAnim = React.useRef(new Animated.Value(0)).current;
+
+    React.useEffect(() => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }, []);
+
+    const opacity = pulseAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.3, 0.7],
+    });
+
+    return (
+      <View style={styles.lessonItem}>
+        <View style={styles.lessonContent}>
+          <View style={styles.lessonHeader}>
+            <Animated.View style={[styles.skeleton, styles.skeletonTitle, { opacity }]} />
+            <Animated.View style={[styles.skeleton, styles.skeletonCheckbox, { opacity }]} />
+          </View>
+          <Animated.View style={[styles.skeleton, styles.skeletonDescription, { opacity }]} />
+          <Animated.View style={[styles.skeleton, styles.skeletonDescription, { width: '60%', opacity }]} />
+          <View style={styles.lessonDetails}>
+            <Animated.View style={[styles.skeleton, styles.skeletonDetail, { opacity }]} />
+            <Animated.View style={[styles.skeleton, styles.skeletonDetail, { opacity }]} />
+          </View>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -189,64 +307,83 @@ const QuizGenerator: React.FC = () => {
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholderTextColor="#999"
+          editable={!loading}
         />
       </View>
 
       {/* Lessons List */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Course Lessons</Text>
-        {filteredLessons.map((lesson) => (
-          <TouchableOpacity
-            key={lesson.id}
-            style={styles.lessonItem}
-            onPress={() => toggleLessonSelection(lesson.id)}
-          >
-            <View style={styles.lessonContent}>
-              <View style={styles.lessonHeader}>
-                <Text style={styles.lessonTitle}>{lesson.title}</Text>
-                <View
-                  style={[
-                    styles.checkbox,
-                    lesson.selected && styles.checkboxSelected,
-                  ]}
-                >
-                  {lesson.selected && (
-                    <Ionicons name="checkmark" size={16} color="#fff" />
-                  )}
+        {loading ? (
+          // Show skeleton loaders while loading
+          <>
+            <LessonSkeleton />
+            <LessonSkeleton />
+            <LessonSkeleton />
+            <LessonSkeleton />
+          </>
+        ) : (
+          filteredLessons.map((lesson) => (
+            <TouchableOpacity
+              key={lesson.id}
+              style={styles.lessonItem}
+              onPress={() => toggleLessonSelection(lesson.id)}
+            >
+              <View style={styles.lessonContent}>
+                <View style={styles.lessonHeader}>
+                  <Text style={styles.lessonTitle}>{lesson.title}</Text>
+                  <View
+                    style={[
+                      styles.checkbox,
+                      lesson.selected && styles.checkboxSelected,
+                    ]}
+                  >
+                    {lesson.selected && (
+                      <Ionicons name="checkmark" size={16} color="#fff" />
+                    )}
+                  </View>
+                </View>
+                <Text style={styles.lessonDescription} numberOfLines={2}>
+                  {lesson.description.length > 100 ? `${lesson.description.substring(0, 100)}...` : lesson.description}
+                </Text>
+                <View style={styles.lessonDetails}>
+                  <Text style={styles.lessonDetail}>
+                    {lesson.pdfCount} PDFs • {lesson.pages} pages
+                  </Text>
+                  <Text style={styles.lessonDetail}>
+                    {lesson.size} ▼ Updated {lesson.updated}
+                  </Text>
                 </View>
               </View>
-              <View style={styles.lessonDetails}>
-                <Text style={styles.lessonDetail}>
-                  Lesson {lesson.id} - {lesson.pages} pages
-                </Text>
-                <Text style={styles.lessonDetail}>
-                  {lesson.size} ▼ Updated {lesson.updated}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          ))
+        )}
       </View>
 
       {/* Select All */}
       <TouchableOpacity
         style={styles.selectAllButton}
         onPress={toggleAllLessons}
+        disabled={loading}
       >
-        <Text style={styles.selectAllText}>Select all lessons</Text>
+        <Text style={[styles.selectAllText, loading && { opacity: 0.5 }]}>Select all lessons</Text>
       </TouchableOpacity>
 
       {/* Divider */}
       <View style={styles.divider} />
 
       {/* Additional Documents */}
-      <View style={styles.section}>
+      <View style={[styles.section, loading && { opacity: 0.5 }]}>
         <Text style={styles.sectionTitle}>Additional Documents</Text>
 
         <View style={styles.uploadSection}>
           <Text style={styles.uploadTitle}>Upload Documents</Text>
           <Text style={styles.uploadSubtitle}>PDF, DOC, DOCX up to 10MB</Text>
-          <TouchableOpacity style={styles.chooseFilesButton}>
+          <TouchableOpacity
+            style={styles.chooseFilesButton}
+            onPress={handleFileSelection}
+            disabled={loading}
+          >
             <Text style={styles.chooseFilesText}>Choose Files</Text>
           </TouchableOpacity>
         </View>
@@ -273,7 +410,7 @@ const QuizGenerator: React.FC = () => {
       </View>
 
       {/* Quiz Settings */}
-      <View style={styles.section}>
+      <View style={[styles.section, loading && { opacity: 0.5 }]}>
         <Text style={styles.sectionTitle}>Quiz Settings</Text>
 
         {/* Number of Questions */}
@@ -286,15 +423,16 @@ const QuizGenerator: React.FC = () => {
                 style={[
                   styles.questionOption,
                   quizSettings.numberOfQuestions === num &&
-                    styles.questionOptionSelected,
+                  styles.questionOptionSelected,
                 ]}
                 onPress={() => handleNumberOfQuestionsChange(num)}
+                disabled={loading}
               >
                 <Text
                   style={[
                     styles.questionOptionText,
                     quizSettings.numberOfQuestions === num &&
-                      styles.questionOptionTextSelected,
+                    styles.questionOptionTextSelected,
                   ]}
                 >
                   {num} questions
@@ -317,15 +455,16 @@ const QuizGenerator: React.FC = () => {
                 style={[
                   styles.difficultyOption,
                   quizSettings.difficulty === difficulty &&
-                    styles.difficultyOptionSelected,
+                  styles.difficultyOptionSelected,
                 ]}
                 onPress={() => handleDifficultyChange(difficulty)}
+                disabled={loading}
               >
                 <Text
                   style={[
                     styles.difficultyOptionText,
                     quizSettings.difficulty === difficulty &&
-                      styles.difficultyOptionTextSelected,
+                    styles.difficultyOptionTextSelected,
                   ]}
                 >
                   {difficulty}
@@ -342,12 +481,13 @@ const QuizGenerator: React.FC = () => {
             <TouchableOpacity
               style={styles.questionTypeItem}
               onPress={() => handleQuestionTypeToggle("multipleChoice")}
+              disabled={loading}
             >
               <View
                 style={[
                   styles.checkbox,
                   quizSettings.questionTypes.multipleChoice &&
-                    styles.checkboxSelected,
+                  styles.checkboxSelected,
                 ]}
               >
                 {quizSettings.questionTypes.multipleChoice && (
@@ -360,12 +500,13 @@ const QuizGenerator: React.FC = () => {
             <TouchableOpacity
               style={styles.questionTypeItem}
               onPress={() => handleQuestionTypeToggle("trueFalse")}
+              disabled={loading}
             >
               <View
                 style={[
                   styles.checkbox,
                   quizSettings.questionTypes.trueFalse &&
-                    styles.checkboxSelected,
+                  styles.checkboxSelected,
                 ]}
               >
                 {quizSettings.questionTypes.trueFalse && (
@@ -378,12 +519,13 @@ const QuizGenerator: React.FC = () => {
             <TouchableOpacity
               style={styles.questionTypeItem}
               onPress={() => handleQuestionTypeToggle("shortAnswer")}
+              disabled={loading}
             >
               <View
                 style={[
                   styles.checkbox,
                   quizSettings.questionTypes.shortAnswer &&
-                    styles.checkboxSelected,
+                  styles.checkboxSelected,
                 ]}
               >
                 {quizSettings.questionTypes.shortAnswer && (
@@ -407,10 +549,18 @@ const QuizGenerator: React.FC = () => {
 
       {/* Generate Quiz Button */}
       <TouchableOpacity
-        style={styles.generateButton}
+        style={[styles.generateButton, (generatingQuiz || loading) && styles.generateButtonDisabled]}
         onPress={handleGenerateQuiz}
+        disabled={generatingQuiz || loading}
       >
-        <Text style={styles.generateButtonText}>Generate Quiz</Text>
+        {generatingQuiz ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color="#fff" />
+            <Text style={styles.generateButtonText}>Generating Quiz...</Text>
+          </View>
+        ) : (
+          <Text style={styles.generateButtonText}>Generate Quiz</Text>
+        )}
       </TouchableOpacity>
     </ScrollView>
   );
@@ -469,6 +619,12 @@ const styles = StyleSheet.create({
     color: "#1a1a1a",
     flex: 1,
     marginRight: 12,
+  },
+  lessonDescription: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 8,
+    lineHeight: 20,
   },
   lessonDetails: {
     flexDirection: "row",
@@ -651,10 +807,40 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
+  generateButtonDisabled: {
+    backgroundColor: "#ccc",
+  },
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   generateButtonText: {
     color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
+  },
+  // Skeleton Loading Styles
+  skeleton: {
+    backgroundColor: "#e0e0e0",
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  skeletonTitle: {
+    height: 20,
+    width: "70%",
+  },
+  skeletonCheckbox: {
+    height: 20,
+    width: 20,
+    borderRadius: 4,
+  },
+  skeletonDescription: {
+    height: 16,
+    width: "100%",
+  },
+  skeletonDetail: {
+    height: 14,
+    width: "40%",
   },
 });
 

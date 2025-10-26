@@ -5,23 +5,87 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useState, useEffect } from "react";
+import { API_BASE_URL } from "../../../config/api";
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const [profileData, setProfileData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
-  const handleLogout = () => {
-    // Handle logout logic
-    router.replace("/(auth)/login");
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
+          method: 'GET',
+          credentials: 'include', // Include cookies for token
+        });
+        const data = await response.json();
+        if (data.success) {
+          setProfileData(data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  const handleLogout = async () => {
+    Alert.alert(
+      "Confirm Logout",
+      "Are you sure you want to log out?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            setLogoutLoading(true);
+            try {
+              const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+                method: 'POST',
+                credentials: 'include', // Include cookies for token
+              });
+              const data = await response.json();
+
+              if (data.success) {
+                // Logout successful, redirect to login
+                router.replace("/(auth)/login");
+              } else {
+                // Show error message
+                Alert.alert("Logout Failed", data.message || "An error occurred during logout");
+              }
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert("Logout Failed", "Network error occurred. Please try again.");
+            } finally {
+              setLogoutLoading(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
     <LinearGradient colors={["#f8f9fa", "#e9ecef"]} style={styles.container}>
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
@@ -36,29 +100,36 @@ export default function ProfileScreen() {
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>JS</Text>
+              <Text style={styles.avatarText}>
+                {profileData?.fullName ? (() => {
+                  const names = profileData.fullName.split(' ');
+                  const firstName = names[0];
+                  const lastName = names[names.length - 1];
+                  return (firstName[0] + lastName[0]).toUpperCase();
+                })() : 'U'}
+              </Text>
             </View>
             <TouchableOpacity style={styles.editButton}>
               <Ionicons name="camera" size={16} color="#fff" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.userName}>John Student</Text>
-          <Text style={styles.userEmail}>john.student@email.com</Text>
+          <Text style={styles.userName}>{profileData?.fullName || 'Loading...'}</Text>
+          <Text style={styles.userEmail}>{profileData?.email || 'Loading...'}</Text>
           <Text style={styles.userBio}>
-            Computer Science Major • Class of 2025
+            {profileData?.role === 'student' ? 'Student' : 'Tutor'} • {profileData?.role === 'student' ? 'Nexa University' : 'Instructor'}
           </Text>
 
           <View style={styles.statsContainer}>
             <View style={styles.stat}>
-              <Text style={styles.statNumber}>12</Text>
+              <Text style={styles.statNumber}>{profileData?.enrolledCourses?.length || 0}</Text>
               <Text style={styles.statLabel}>Courses</Text>
             </View>
             <View style={styles.stat}>
-              <Text style={styles.statNumber}>48</Text>
+              <Text style={styles.statNumber}>0</Text>
               <Text style={styles.statLabel}>Hours</Text>
             </View>
             <View style={styles.stat}>
-              <Text style={styles.statNumber}>4.8</Text>
+              <Text style={styles.statNumber}>0.0</Text>
               <Text style={styles.statLabel}>Rating</Text>
             </View>
           </View>
@@ -74,15 +145,15 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="card-outline" size={24} color="#4facfe" />
-            <Text style={styles.menuText}>Payment Methods</Text>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/personalize")}>
+            <Ionicons name="color-palette-outline" size={24} color="#ff7e5f" />
+            <Text style={styles.menuText}>Personalize Content</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="notifications-outline" size={24} color="#42e695" />
-            <Text style={styles.menuText}>Notifications</Text>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/preferred_language')}>
+            <Ionicons name="language-outline" size={24} color="#feb47b" />
+            <Text style={styles.menuText}>Preferred Language</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
         </View>
@@ -114,8 +185,16 @@ export default function ProfileScreen() {
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#ff6b6b" />
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          disabled={logoutLoading}
+        >
+          {logoutLoading ? (
+            <ActivityIndicator size="small" color="#ff6b6b" />
+          ) : (
+            <Ionicons name="log-out-outline" size={24} color="#ff6b6b" />
+          )}
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -129,7 +208,10 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollViewContent: {
     padding: 20,
+    paddingBottom: 60, // Add extra padding at bottom for better scrolling
   },
   header: {
     flexDirection: "row",

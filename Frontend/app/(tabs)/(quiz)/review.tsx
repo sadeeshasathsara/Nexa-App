@@ -1,78 +1,116 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   ScrollView,
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
+  Alert,
+  RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { API_BASE_URL } from "../../../config/api";
+
+interface Question {
+  id: string;
+  question: string;
+  questionType: "multipleChoice" | "trueFalse" | "shortAnswer";
+  options?: string[];
+  answer: string;
+}
 
 export default function ReviewQuiz() {
   const router = useRouter();
-  const quizData = [
-    {
-      id: 1,
-      question: "What is the value of x in the equation 2x + 5 = 13?",
-      options: ["x = 6", "x = 8", "x = 4", "x = 9"],
-      answer: "x = 4",
-    },
-    {
-      id: 2,
-      question: "What is the area of a circle with radius 5 units?",
-      options: [
-        "15π square units",
-        "25π square units",
-        "10π square units",
-        "5π square units",
-      ],
-      answer: "25π square units",
-    },
-    {
-      id: 3,
-      question: "Which of the following is a prime number?",
-      options: ["15", "21", "17", "25"],
-      answer: "17",
-    },
-    {
-      id: 4,
-      question: "What is the square root of 144?",
-      options: ["10", "12", "14", "16"],
-      answer: "12",
-    },
-    {
-      id: 5,
-      question:
-        "If a triangle has angles of 60°, 60°, and 60°, what type of triangle is it?",
-      options: [
-        "Right triangle",
-        "Isosceles triangle",
-        "Equilateral triangle",
-        "Scalene triangle",
-      ],
-      answer: "Equilateral triangle",
-    },
-  ];
+  const { quizId } = useLocalSearchParams();
+  const [quizData, setQuizData] = useState<Question[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [courseTitle, setCourseTitle] = useState("Mathematics Quiz");
+  const [quizSettings, setQuizSettings] = useState<any>({});
+
+  useEffect(() => {
+    if (quizId) {
+      fetchQuizDetails();
+    }
+  }, [quizId]);
+
+  const fetchQuizDetails = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/quizzes/${quizId}`, {
+        credentials: 'include', // Include cookies for token
+      });
+      const data = await response.json();
+      if (data.success) {
+        // Transform questions to match the interface
+        const transformedQuestions = (data.data.questions || []).map((q: any) => ({
+          id: q._id,
+          question: q.questionText,
+          questionType: q.questionType,
+          options: q.options,
+          answer: q.answer,
+        }));
+        setQuizData(transformedQuestions);
+        setCourseTitle(data.data.title || "Quiz");
+        setQuizSettings({
+          difficulty: data.data.difficulty,
+          numberOfQuestions: transformedQuestions.length,
+        });
+      } else {
+        Alert.alert("Error", "Failed to fetch quiz details");
+      }
+    } catch (error) {
+      console.error("Error fetching quiz details:", error);
+      Alert.alert("Error", "Failed to fetch quiz details");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchQuizDetails();
+  };
 
   const handlePublish = () => {
-    router.push("/(quiz)/publish");
+    router.push({
+      pathname: "/(quiz)/publish",
+      params: { quizId },
+    });
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <Text>Loading quiz...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Header Info */}
         <View style={styles.header}>
-          <Text style={styles.title}>Mathematics Quiz</Text>
+          <Text style={styles.title}>{courseTitle}</Text>
           <View style={styles.badge}>
             <Text style={styles.badgeText}>Draft</Text>
           </View>
           <Text style={styles.subtitle}>
-            Basic algebra and geometry concepts
+            Generated quiz with {quizData.length} questions
           </Text>
-          <Text style={styles.meta}>⏱ 15 minutes • 📘 10 questions</Text>
+          <Text style={styles.meta}>
+            ⏱ {quizSettings.numberOfQuestions || quizData.length} questions • 📘 {quizSettings.difficulty || 'Medium'} difficulty
+          </Text>
         </View>
 
         {/* Questions */}
@@ -86,24 +124,32 @@ export default function ReviewQuiz() {
             </View>
             <Text style={styles.questionText}>{q.question}</Text>
 
-            {q.options.map((option, index) => {
-              const isCorrect = option === q.answer;
-              return (
-                <View
-                  key={index}
-                  style={[styles.option, isCorrect && styles.optionSelected]}
-                >
-                  <Text
-                    style={[
-                      styles.optionText,
-                      isCorrect && styles.optionTextSelected,
-                    ]}
+            {q.questionType === 'shortAnswer' ? (
+              <View style={[styles.option, styles.optionSelected]}>
+                <Text style={[styles.optionText, styles.optionTextSelected]}>
+                  Answer: {q.answer}
+                </Text>
+              </View>
+            ) : (
+              q.options?.map((option, index) => {
+                const isCorrect = option === q.answer;
+                return (
+                  <View
+                    key={index}
+                    style={[styles.option, isCorrect && styles.optionSelected]}
                   >
-                    {option}
-                  </Text>
-                </View>
-              );
-            })}
+                    <Text
+                      style={[
+                        styles.optionText,
+                        isCorrect && styles.optionTextSelected,
+                      ]}
+                    >
+                      {option}
+                    </Text>
+                  </View>
+                );
+              })
+            )}
           </View>
         ))}
 
@@ -127,6 +173,7 @@ export default function ReviewQuiz() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#fff" },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scrollContainer: { padding: 16, paddingBottom: 100 },
   header: { marginBottom: 20 },
   title: { fontSize: 20, fontWeight: "700", color: "#1a1a1a" },

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,9 +9,9 @@ import {
   Switch,
   Alert,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { API_BASE_URL } from "../../../config/api";
 
 export default function TutorProfile() {
   const router = useRouter();
@@ -21,6 +21,36 @@ export default function TutorProfile() {
     studentMessages: true,
     quizResults: false,
   });
+  const [profileData, setProfileData] = useState<any>(null);
+  const [summaryData, setSummaryData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchProfileData();
+  }, []);
+
+  const fetchProfileData = async () => {
+    try {
+      const [profileResponse, summaryResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/users/profile`),
+        fetch(`${API_BASE_URL}/api/users/tutor-dashboard`)
+      ]);
+
+      const profileResult = await profileResponse.json();
+      const summaryResult = await summaryResponse.json();
+
+      if (profileResult.success) {
+        setProfileData(profileResult.data);
+      }
+      if (summaryResult.success) {
+        setSummaryData(summaryResult.data);
+      }
+    } catch (error) {
+      console.error('Error fetching profile data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const updateNotification = (key: string, value: boolean) => {
     setNotifications((prev) => ({ ...prev, [key]: value }));
@@ -44,9 +74,9 @@ export default function TutorProfile() {
       onPress: () => Alert.alert("Edit Profile", "Coming soon!"),
     },
     {
-      icon: "school",
-      title: "My Courses",
-      onPress: () => router.push("/(tutor_tabs)/courses"),
+      icon: "language-outline",
+      title: "Preferred Language",
+      onPress: () => router.push("/preferred_language"),
     },
     {
       icon: "document-text",
@@ -71,17 +101,7 @@ export default function TutorProfile() {
   ];
 
   return (
-    <LinearGradient
-      colors={[
-        "#1e3a8a",
-        "#2f6dd1e5",
-        "#3b86ffc6",
-        "#56c89eff",
-        "#3b86ffc6",
-        "#3b82f6",
-      ]}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
         {/* Header */}
         <View style={styles.header}>
@@ -91,32 +111,29 @@ export default function TutorProfile() {
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={40} color="#3b82f6" />
-            </View>
+            <Image source={{ uri: "https://via.placeholder.com/80x80/3b82f6/ffffff?text=Tutor" }} style={styles.avatar} />
             <View style={styles.verifiedBadge}>
               <Ionicons name="checkmark-circle" size={16} color="#ffffff" />
             </View>
           </View>
 
-          <Text style={styles.profileName}>Dr. Sarah Johnson</Text>
-          <Text style={styles.profileTitle}>Mathematics Tutor</Text>
+          <Text style={styles.profileName}>{profileData?.fullName || "Loading..."}</Text>
+          <Text style={styles.profileTitle}>{profileData?.role ? profileData.role.charAt(0).toUpperCase() + profileData.role.slice(1) : "Tutor"}</Text>
           <Text style={styles.profileBio}>
-            Experienced mathematics educator with 8+ years of teaching advanced
-            calculus and algebra.
+            {profileData?.email || "Loading..."}
           </Text>
 
           <View style={styles.statsRow}>
             <View style={styles.stat}>
-              <Text style={styles.statNumber}>4.9</Text>
+              <Text style={styles.statNumber}>{summaryData?.averageRating || "0"}</Text>
               <Text style={styles.statLabel}>Rating</Text>
             </View>
             <View style={styles.stat}>
-              <Text style={styles.statNumber}>45</Text>
+              <Text style={styles.statNumber}>{summaryData?.totalStudents || "0"}</Text>
               <Text style={styles.statLabel}>Students</Text>
             </View>
             <View style={styles.stat}>
-              <Text style={styles.statNumber}>3</Text>
+              <Text style={styles.statNumber}>{summaryData?.totalCourses || "0"}</Text>
               <Text style={styles.statLabel}>Courses</Text>
             </View>
           </View>
@@ -172,13 +189,14 @@ export default function TutorProfile() {
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#f8f9fa",
   },
   scrollView: {
     flex: 1,
@@ -191,7 +209,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#ffffff",
+    color: "#1e293b",
     textAlign: "center",
   },
   profileCard: {
@@ -231,6 +249,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#1e293b",
     marginBottom: 4,
+    textAlign: "center",
   },
   profileTitle: {
     fontSize: 16,
@@ -269,7 +288,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#ffffff",
+    color: "#1e293b",
     marginBottom: 16,
   },
   settingsList: {

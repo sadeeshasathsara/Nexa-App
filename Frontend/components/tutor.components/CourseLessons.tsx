@@ -28,9 +28,9 @@ const CourseLessons: React.FC<CourseLessonsProps> = ({
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {course.lessons.map((lesson, index) => (
         <TouchableOpacity
-          key={lesson.id}
+          key={lesson._id || lesson.id || index}
           style={styles.lessonItem}
-          onPress={() => handleLessonPress(lesson.id)}
+          onPress={() => handleLessonPress(lesson._id || lesson.id)}
         >
           <View style={styles.lessonNumber}>
             <Text style={styles.lessonNumberText}>{index + 1}</Text>

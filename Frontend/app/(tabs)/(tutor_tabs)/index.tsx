@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,21 +6,59 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  Animated,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { API_BASE_URL } from "../../../config/api";
 
 const { width } = Dimensions.get("window");
 
+const SkeletonLoader = ({ width, height, borderRadius }: { width: number | string; height: number; borderRadius?: number }) => {
+  const fadeAnim = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const animate = () => {
+      Animated.sequence([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 0.3,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start(() => animate());
+    };
+    animate();
+  }, [fadeAnim]);
+
+  return (
+    <Animated.View
+      style={{
+        width: width as any,
+        height,
+        backgroundColor: '#e0e0e0',
+        borderRadius: borderRadius || 8,
+        opacity: fadeAnim,
+      }}
+    />
+  );
+};
+
 export default function TutorDashboard() {
   const router = useRouter();
-  const [stats] = useState({
+  const [userName, setUserName] = useState("Dr. Sarah Johnson");
+  const [stats, setStats] = useState({
     totalStudents: 45,
     activeCourses: 3,
     quizzesCreated: 12,
     averageRating: 4.8,
   });
+  const [isProfileLoading, setIsProfileLoading] = useState<boolean>(true);
+  const [isStatsLoading, setIsStatsLoading] = useState<boolean>(true);
 
   const recentActivities = [
     { id: 1, type: "quiz", title: "Mathematics Basics", date: "2 hours ago" },
@@ -33,25 +71,70 @@ export default function TutorDashboard() {
     },
   ];
 
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        setIsProfileLoading(true);
+        const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            // Add authorization header if needed
+          },
+        });
+        const data = await response.json();
+        if (data.success) {
+          setUserName(data.data.fullName);
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      } finally {
+        setIsProfileLoading(false);
+      }
+    };
+
+    const fetchTutorSummary = async () => {
+      try {
+        setIsStatsLoading(true);
+        const response = await fetch(`${API_BASE_URL}/api/users/tutor-dashboard`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            // Add authorization header if needed
+          },
+        });
+        const data = await response.json();
+        if (data.success) {
+          setStats({
+            totalStudents: data.data.totalStudents,
+            activeCourses: data.data.totalCourses,
+            quizzesCreated: data.data.totalQuizzes,
+            averageRating: data.data.averageRating,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching tutor summary:', error);
+      } finally {
+        setIsStatsLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+    fetchTutorSummary();
+  }, []);
+
   return (
-    <LinearGradient
-      colors={[
-        "#b1c8f6ff",
-        "#b1c8f6ff",
-        "#2f6dd1e5",
-        "#3b86ffc6",
-        "#56c89eff",
-        "#3b86ffc6",
-        "#3b82f6",
-      ]}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
         {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Welcome back,</Text>
-            <Text style={styles.name}>Dr. Sarah Johnson</Text>
+            {isProfileLoading ? (
+              <SkeletonLoader width={200} height={24} borderRadius={4} />
+            ) : (
+              <Text style={styles.name}>{userName}</Text>
+            )}
           </View>
           <TouchableOpacity style={styles.notificationButton}>
             <Ionicons name="notifications" size={24} color="#1e3a8a" />
@@ -60,26 +143,38 @@ export default function TutorDashboard() {
 
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Ionicons name="people" size={32} color="#3b82f6" />
-            <Text style={styles.statNumber}>{stats.totalStudents}</Text>
-            <Text style={styles.statLabel}>Students</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="book" size={32} color="#3b82f6" />
-            <Text style={styles.statNumber}>{stats.activeCourses}</Text>
-            <Text style={styles.statLabel}>Courses</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="document-text" size={32} color="#3b82f6" />
-            <Text style={styles.statNumber}>{stats.quizzesCreated}</Text>
-            <Text style={styles.statLabel}>Quizzes</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="star" size={32} color="#3b82f6" />
-            <Text style={styles.statNumber}>{stats.averageRating}</Text>
-            <Text style={styles.statLabel}>Rating</Text>
-          </View>
+          {isStatsLoading ? (
+            Array.from({ length: 4 }).map((_, index) => (
+              <View key={index} style={styles.statCard}>
+                <SkeletonLoader width={32} height={32} borderRadius={16} />
+                <SkeletonLoader width={40} height={24} />
+                <SkeletonLoader width={50} height={14} />
+              </View>
+            ))
+          ) : (
+            <>
+              <View style={styles.statCard}>
+                <Ionicons name="people" size={32} color="#3b82f6" />
+                <Text style={styles.statNumber}>{stats.totalStudents}</Text>
+                <Text style={styles.statLabel}>Students</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Ionicons name="book" size={32} color="#3b82f6" />
+                <Text style={styles.statNumber}>{stats.activeCourses}</Text>
+                <Text style={styles.statLabel}>Courses</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Ionicons name="document-text" size={32} color="#3b82f6" />
+                <Text style={styles.statNumber}>{stats.quizzesCreated}</Text>
+                <Text style={styles.statLabel}>Quizzes</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Ionicons name="star" size={32} color="#3b82f6" />
+                <Text style={styles.statNumber}>{stats.averageRating.toFixed(1)}</Text>
+                <Text style={styles.statLabel}>Rating</Text>
+              </View>
+            </>
+          )}
         </View>
 
         {/* Quick Actions */}
@@ -88,14 +183,14 @@ export default function TutorDashboard() {
           <View style={styles.actionsGrid}>
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => router.push("/(tutor_tabs)/quiz/generate_quiz")}
+              onPress={() => router.push("/select_course")}
             >
               <Ionicons name="add-circle" size={32} color="#3b82f6" />
               <Text style={styles.actionText}>Create Quiz</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => router.push("/(tutor_tabs)/courses/course_list")}
+              onPress={() => router.push("/(tabs)/(tutor_tabs)/courses/create")}
             >
               <Ionicons name="book" size={32} color="#3b82f6" />
               <Text style={styles.actionText}>New Course</Text>
@@ -123,8 +218,8 @@ export default function TutorDashboard() {
                       activity.type === "quiz"
                         ? "document-text"
                         : activity.type === "course"
-                        ? "book"
-                        : "person"
+                          ? "book"
+                          : "person"
                     }
                     size={20}
                     color="#3b82f6"
@@ -140,13 +235,14 @@ export default function TutorDashboard() {
           </View>
         </View>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#f8f9fa",
   },
   scrollView: {
     flex: 1,
@@ -160,14 +256,14 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 16,
-    color: "#215bb9ff",
+    color: "#64748b",
     marginBottom: 4,
     marginTop: 30,
   },
   name: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#215bb9ff",
+    color: "#1e293b",
   },
   notificationButton: {
     width: 44,
@@ -214,7 +310,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#ffffff",
+    color: "#1e293b",
     marginBottom: 15,
   },
   actionsGrid: {

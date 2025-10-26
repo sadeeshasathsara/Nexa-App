@@ -1,46 +1,66 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { Course } from "../../types/course";
 
 interface CourseOverviewProps {
-  course: Course;
+  course: any;
 }
 
 const CourseOverview: React.FC<CourseOverviewProps> = ({ course }) => {
   return (
-    <View style={styles.container}>
-      <Text style={styles.overviewText}>{course.overview}</Text>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={true}>
+      <Text style={styles.overviewText}>{course.description}</Text>
 
-      <View style={styles.progressContainer}>
-        <Text style={styles.progressLabel}>Course Progress</Text>
-        <View style={styles.progressBar}>
-          <View
-            style={[styles.progressFill, { width: `${course.progress}%` }]}
-          />
+      <View style={styles.infoContainer}>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Instructor:</Text>
+          <Text style={styles.infoValue}>{course.instructor?.fullName}</Text>
         </View>
-        <Text style={styles.progressText}>{course.progress}% Complete</Text>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Category:</Text>
+          <Text style={styles.infoValue}>{course.category}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Difficulty:</Text>
+          <Text style={styles.infoValue}>{course.difficulty}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Duration:</Text>
+          <Text style={styles.infoValue}>{course.durationWeeks} weeks</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Rating:</Text>
+          <Text style={styles.infoValue}>{course.rating}/5 ({course.numReviews} reviews)</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Enrollments:</Text>
+          <Text style={styles.infoValue}>{course.enrollments}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Status:</Text>
+          <Text style={styles.infoValue}>{course.isEnrolled ? 'Enrolled' : 'Not Enrolled'}</Text>
+        </View>
       </View>
 
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{course.lessons.length}</Text>
+          <Text style={styles.statNumber}>{course.lessons?.length || 0}</Text>
           <Text style={styles.statLabel}>Lessons</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>
-            {course.quizzes.filter((q) => q.completed).length}/
-            {course.quizzes.length}
+            {course.assignments?.length || 0}
           </Text>
-          <Text style={styles.statLabel}>Quizzes Done</Text>
+          <Text style={styles.statLabel}>Assignments</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>
-            {Math.round((course.progress / 100) * 8)}h
+            {course.sessions?.length || 0}
           </Text>
-          <Text style={styles.statLabel}>Time Spent</Text>
+          <Text style={styles.statLabel}>Live Sessions</Text>
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 
@@ -55,31 +75,26 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 20,
   },
-  progressContainer: {
+  infoContainer: {
     backgroundColor: "#f8f9fa",
     padding: 16,
     borderRadius: 8,
     marginBottom: 20,
   },
-  progressLabel: {
-    fontSize: 16,
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e9ecef",
+  },
+  infoLabel: {
+    fontSize: 14,
     fontWeight: "600",
-    marginBottom: 8,
     color: "#1a1a1a",
   },
-  progressBar: {
-    height: 8,
-    backgroundColor: "#e9ecef",
-    borderRadius: 4,
-    marginBottom: 8,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#007AFF",
-    borderRadius: 4,
-  },
-  progressText: {
+  infoValue: {
     fontSize: 14,
     color: "#666",
   },
