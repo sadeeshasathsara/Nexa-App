@@ -20,6 +20,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { API_BASE_URL } from "../../../config/api";
 import { connectWebSocket } from "../../../utils/socket";
+import MarkdownDisplay from "react-native-markdown-display";
 
 // Typing indicator component with animated dots
 const TypingIndicator = () => {
@@ -134,9 +135,13 @@ const MessageBubble = ({ message, isUser }: { message: any; isUser: boolean }) =
         </View>
       )}
       <View style={[styles.messageBubble, isUser ? styles.userMessage : styles.botMessage]}>
-        <Text style={[styles.messageText, isUser ? styles.userMessageText : styles.botMessageText]}>
+        <MarkdownDisplay
+          style={{
+            body: { ...styles.messageText, ...(isUser ? styles.userMessageText : styles.botMessageText) },
+          }}
+        >
           {message.text}
-        </Text>
+        </MarkdownDisplay>
         <Text style={[styles.timestamp, isUser ? styles.userTimestamp : styles.botTimestamp]}>
           {formatTime(message.timestamp)}
         </Text>
