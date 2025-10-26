@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Animated,
   TextInput,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -55,6 +56,7 @@ export default function CoursesScreen() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [showSearchInput, setShowSearchInput] = useState<boolean>(false);
+  const [imageErrors, setImageErrors] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -214,9 +216,18 @@ export default function CoursesScreen() {
                   });
                 }}
               >
-                <View style={styles.courseImage}>
-                  <Text style={styles.courseEmoji}>📚</Text>
-                </View>
+                {!course.imageUrl || imageErrors[course._id] ? (
+                  <View style={styles.courseImagePlaceholder}>
+                    <Ionicons name="book" size={40} color="#667eea" />
+                  </View>
+                ) : (
+                  <Image
+                    source={{ uri: course.imageUrl }}
+                    style={styles.courseImage}
+                    resizeMode="cover"
+                    onError={() => setImageErrors(prev => ({ ...prev, [course._id]: true }))}
+                  />
+                )}
                 <View style={styles.courseContent}>
                   <Text style={styles.courseCategory}>{course.category}</Text>
                   <Text style={styles.courseTitle}>
@@ -325,12 +336,17 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   courseImage: {
+    width: "100%",
+    height: 100,
+    backgroundColor: "rgba(102, 126, 234, 0.1)",
+  },
+  courseImagePlaceholder: {
+    width: "100%",
     height: 100,
     backgroundColor: "rgba(102, 126, 234, 0.1)",
     justifyContent: "center",
     alignItems: "center",
   },
-  courseEmoji: { fontSize: 40 },
   courseContent: { padding: 12 },
   courseCategory: {
     fontSize: 10,
