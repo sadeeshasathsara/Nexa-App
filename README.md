@@ -2,14 +2,14 @@
 
 <div align="center">
 
-![Nexa Logo](./Frontend/assets/icon.png)
-
 **A comprehensive mobile learning platform connecting students and tutors**
 
 [![React Native](https://img.shields.io/badge/React%20Native-0.81.4-blue.svg)](https://reactnative.dev/)
 [![Expo](https://img.shields.io/badge/Expo-~54.0.12-000020.svg)](https://expo.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-~5.9.2-3178c6.svg)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+![WhatsApp Image 2025-10-31 at 22 02 35_5afcfa17](https://github.com/user-attachments/assets/3da7d1c1-22b6-4b73-aae8-8239a5358854)
 
 </div>
 
