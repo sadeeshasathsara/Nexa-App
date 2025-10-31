@@ -721,12 +721,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 👨‍💻 Authors & Contributors
+## � Team
 
-- **Sadeesha Sathsara** - Initial work - [@sadeeshasathsara](https://github.com/sadeeshasathsara)
-- **Eric Devon** - Repository Owner - [@Eric-Devon](https://github.com/Eric-Devon)
+**Project Lead**: [Sadeesha Sathsara](https://github.com/sadeeshasathsara)
 
-See the list of [contributors](https://github.com/Eric-Devon/Nexa-App/contributors) who participated in this project.
+### Contributors
+
+- **Sadeesha Sathsara** - [@sadeeshasathsara](https://github.com/sadeeshasathsara) - Project Lead & Architecture
+- **Eric Devon** - [@Eric-Devon](https://github.com/Eric-Devon) - Backend Developer
+- **Ehara Perera** - [@EHARAPERERA](https://github.com/EHARAPERERA) - Backend Developer
+- **Vageesha Udawatta** - [@vageeshau](https://github.com/vageeshau) - Backend Developer
 
 ---
 
